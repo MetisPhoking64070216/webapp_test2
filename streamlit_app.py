@@ -6,7 +6,32 @@ import os
 import tempfile
 import time
 import zipfile
+import re
 
+EMU = 9525  
+
+def center_image_in_cell(ws, cell, img, width, height):
+    from openpyxl.utils import column_index_from_string, get_column_letter
+
+    col_letter = ''.join(filter(str.isalpha, cell))
+    row_number = int(''.join(filter(str.isdigit, cell)))
+
+    col_index = column_index_from_string(col_letter)
+    col_dim = ws.column_dimensions.get(col_letter)
+    row_dim = ws.row_dimensions.get(row_number)
+
+    col_width = col_dim.width if col_dim and col_dim.width else 8.43
+    row_height = row_dim.height if row_dim and row_dim.height else 15
+
+    cell_width_px = col_width * 7.5
+    cell_height_px = row_height * 1.33
+
+    img.width = width
+    img.height = height
+
+    img.anchor = cell
+
+    ws.add_image(img)
 
 def process_excel(before_file_path, template_file_path, cell_positions_dict, split_column, split_method, skiprows, sheet_name_col, barcode_folder=None, barcode_col=None, barcode_cells=None, barcode_size=(100, 50)):
     df = pd.read_excel(before_file_path, skiprows=skiprows)
@@ -60,9 +85,7 @@ def process_excel(before_file_path, template_file_path, cell_positions_dict, spl
             if barcode_path:
                 for cell in barcode_cells:
                     img = Image(barcode_path)
-                    img.width, img.height = barcode_size
-                    img.anchor = cell
-                    new_sheet.add_image(img)
+                    center_image_in_cell(new_sheet, cell, img, *barcode_size)
 
         for img_path, img_anchor in template_images:
             img = Image(img_path)
@@ -76,7 +99,6 @@ def process_excel(before_file_path, template_file_path, cell_positions_dict, spl
         return None
 
     return output_path
-
 
 st.title("\U0001F4CA ใบปะหน้าปะล่ะ")
 st.markdown("หมายเหตุ : หากต้องการใส่ข้อมูลหลายเซลล์ ให้ใส่เครื่องหมายจุลภาค( , )ขั้นระหว่างเซลล์")
@@ -106,7 +128,7 @@ split_method = st.selectbox("เลือกวิธีการ split", ["Remo
 
 barcode_col = st.selectbox("เลือกคอลัมน์ที่ใช้จับคู่กับไฟล์ Barcode", ["(ไม่เลือก)"] + column_options)
 barcode_cells_input = st.text_input("ระบุตำแหน่งเซลล์ของ Barcode (เช่น A1, B2, C3)")
-barcode_cells = [cell.strip() for cell in barcode_cells_input.split(",") if cell.strip()]
+barcode_cells = [re.sub(r"[^\w\d]", "", pos.strip().upper()) for pos in barcode_cells_input.split(",") if pos.strip()]
 barcode_width = st.number_input("ระบุกว้างของ Barcode", min_value=10, value=100, step=10)
 barcode_height = st.number_input("ระบุสูงของ Barcode", min_value=10, value=50, step=10)
 
