@@ -100,7 +100,7 @@ def process_excel(before_file_path, template_file_path, cell_positions_dict, spl
 
     return output_path
 
-st.title("\U0001F4CA ใบปะหน้าปะล่ะ")
+st.title("\U0001F4CA เว็บไซต์สร้างใบปะหน้า")
 st.markdown("หมายเหตุ : หากต้องการใส่ข้อมูลหลายเซลล์ ให้ใส่เครื่องหมายจุลภาค( , )ขั้นระหว่างเซลล์")
 
 before_file = st.file_uploader("Upload ไฟล์ข้อมูล", type=["xlsx"])
