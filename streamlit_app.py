@@ -6,7 +6,7 @@ import os
 import tempfile
 import time
 
-def process_excel(before_file_path, template_file_path, selected_columns, cell_positions_dict, split_column, split_method, skiprows, sheet_name_col):
+def process_excel(before_file_path, template_file_path, cell_positions_dict, split_column, split_method, skiprows, sheet_name_col):
     df = pd.read_excel(before_file_path, skiprows=skiprows)
 
     for col in df.columns:
