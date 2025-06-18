@@ -5,9 +5,8 @@ from openpyxl.drawing.image import Image
 import os
 import tempfile
 import time
-import zipfile
 
-def process_excel(before_file_path, template_file_path, selected_columns, cell_positions_dict, split_column, split_method, skiprows, sheet_name_col, barcode_folder, barcode_col, barcode_cells, barcode_size, enable_barcode):
+def process_excel(before_file_path, template_file_path, selected_columns, cell_positions_dict, split_column, split_method, skiprows, sheet_name_col):
     df = pd.read_excel(before_file_path, skiprows=skiprows)
 
     for col in df.columns:
@@ -50,33 +49,6 @@ def process_excel(before_file_path, template_file_path, selected_columns, cell_p
             for cell_pos in cell_positions:
                 new_sheet[cell_pos] = value
 
-        if enable_barcode and barcode_folder and barcode_col in df.columns:
-            barcode_value = str(row[barcode_col])
-            barcode_path_png = os.path.join(barcode_folder, f"{barcode_value}.png")
-            barcode_path_jpg = os.path.join(barcode_folder, f"{barcode_value}.jpg")
-            barcode_path = barcode_path_png if os.path.exists(barcode_path_png) else (barcode_path_jpg if os.path.exists(barcode_path_jpg) else None)
-            
-            if barcode_path:
-                img = Image(barcode_path)
-                img.width, img.height = barcode_size
-                
-                for cell in barcode_cells:
-                    col_letter = ''.join(filter(str.isalpha, cell))
-                    row_number = ''.join(filter(str.isdigit, cell))
-                    if col_letter and row_number:
-                        cell_width = new_sheet.column_dimensions[col_letter].width * 7
-                        cell_height = new_sheet.row_dimensions[int(row_number)].height
-
-                        x_offset = (cell_width - img.width) / 2
-                        y_offset = (cell_height - img.height) / 2
-
-                        anchor = f"{col_letter}{row_number}"
-                        img.anchor = anchor
-                        new_sheet.add_image(img, anchor)
-
-                        new_sheet.column_dimensions[col_letter].width = max(cell_width / 7, new_sheet.column_dimensions[col_letter].width)
-                        new_sheet.row_dimensions[int(row_number)].height = max(cell_height, new_sheet.row_dimensions[int(row_number)].height)
-
         for img_path, img_anchor in template_images:
             img = Image(img_path)
             new_sheet.add_image(img, img_anchor)
@@ -91,12 +63,12 @@ def process_excel(before_file_path, template_file_path, selected_columns, cell_p
     return output_path
 
 st.title("\U0001F4CA ใบปะหน้าปะล่ะ")
-st.markdown("หมายเหตุ : หากต้องการใส่ข้อมูลหลายเซลล์ ให้ใส่เครื่องหมายจุลภาค( , )ขั้นระหว่างเซลล์")
+st.markdown(
+    "หมายเหตุ : หากต้องการใส่ข้อมูลหลายเซลล์ ให้ใส่เครื่องหมายจุลภาค( , )ขั้นระหว่างเซลล์"
+)
 
 before_file = st.file_uploader("Upload ไฟล์ข้อมูล", type=["xlsx"])
 template_file = st.file_uploader("Upload ไฟล์ Template", type=["xlsx"])
-barcode_zip = st.file_uploader("Upload ไฟล์ ZIP ของ Barcode", type=["zip"])
-
 skiprows = st.number_input("ระบุจำนวนแถวที่ต้องการข้าม (skiprows)", min_value=0, value=0, step=1)
 
 if before_file:
@@ -117,28 +89,6 @@ for col in selected_columns:
 split_column = st.selectbox("เลือกคอลัมน์ที่ต้องการ split", ["(ไม่เลือก)"] + column_options)
 split_method = st.selectbox("เลือกวิธีการ split", ["Remove Numbers", "Other Method"])
 
-enable_barcode = st.checkbox("ใส่ Barcode ลงในไฟล์", value=False)
-
-barcode_col = None
-barcode_cells = []
-barcode_width = 0
-barcode_height = 0
-barcode_folder = None
-
-if enable_barcode:
-    barcode_col = st.selectbox("เลือกคอลัมน์ที่ใช้จับคู่กับไฟล์ Barcode", ["(ไม่เลือก)"] + column_options)
-    barcode_cells_input = st.text_input("ระบุตำแหน่งเซลล์ของ Barcode (เช่น A1, B2, C3)")
-    barcode_cells = [cell.strip() for cell in barcode_cells_input.split(",") if cell.strip()]
-    barcode_width = st.number_input("ระบุกว้างของ Barcode", min_value=10, value=100, step=10)
-    barcode_height = st.number_input("ระบุสูงของ Barcode", min_value=10, value=50, step=10)
-
-    if barcode_zip:
-        temp_barcode_dir = os.path.join(tempfile.gettempdir(), "barcode_images")
-        os.makedirs(temp_barcode_dir, exist_ok=True)
-        with zipfile.ZipFile(barcode_zip, 'r') as zip_ref:
-            zip_ref.extractall(temp_barcode_dir)
-        barcode_folder = temp_barcode_dir
-
 if st.button("Generate Excel File"):
     if before_file and template_file and selected_columns and cell_positions_dict:
         temp_dir = tempfile.gettempdir()
@@ -152,21 +102,7 @@ if st.button("Generate Excel File"):
         
         time.sleep(1)
         
-        output_file = process_excel(
-            before_file_path,
-            template_file_path,
-            selected_columns,
-            cell_positions_dict,
-            split_column,
-            split_method,
-            skiprows,
-            sheet_name_col,
-            barcode_folder,
-            barcode_col,
-            barcode_cells,
-            (barcode_width, barcode_height),
-            enable_barcode
-        )
+        output_file = process_excel(before_file_path, template_file_path, selected_columns, cell_positions_dict, split_column, split_method, skiprows, sheet_name_col)
         if output_file:
             with open(output_file, "rb") as file:
                 st.download_button("Download Processed Excel", file, file_name="processed_excel.xlsx")
